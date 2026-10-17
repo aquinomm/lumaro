@@ -1,0 +1,33 @@
+%!TEX root = ../main.tex
+% ----- CONFIGURAÇÕES ----- %
+\documentclass[12pt]{article}
+\usepackage{graphicx} % imagens
+\usepackage[brazil]{babel} % idioma
+\usepackage{amsmath} % equações
+\numberwithin{equation}{section} % numeração de equação numero-da-secao.numero-da-equacao
+\usepackage{caption} % legenda em imagens e tabelas
+\usepackage{subcaption} % legenda em subimagens e subtabelas
+\newcommand{\source}[1]{\caption*{Fonte: {#1}} } % para adicionar fonte de imagens e tabelas
+\usepackage{enumitem} % criação de listas
+\usepackage{cite} % para citar seções, imagens...
+\usepackage[hidelinks]{hyperref} % para ter itens (citação de seções, sumário...) clicáveis
+\usepackage{indentfirst} % espaçamento do primeiro parágrafo
+%\setcounter{section}{0} % começa as seções em 0
+\usepackage{booktabs}
+% --- ABNT --- %
+% definindo fonte
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+% tamanho da folha e margens
+\usepackage[a4paper, left=3cm, top=3cm, right=2cm, bottom=2cm]{geometry}
+% definindo tamanho para items e subitems
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\fontsize{16}{15}\bfseries}{\makebox[25pt][l]{\thesection}}{0pt}{}
+\titleformat{\subsection}{\normalfont\fontsize{16}{15}\bfseries}{\makebox[25pt][l]{\thesubsection}}{0pt}{}
+% para configurar alinhamento e espaçamento
+\usepackage{setspace}
+\usepackage{ragged2e}
+\titlespacing*{\section}{0.75cm}{12pt}{12pt}
+\titlespacing*{\subsection}{0.75cm}{12pt}{12pt}
+\usepackage[num]{abntex2cite} % bibliografia e citação no padrão ABNT
+\usepackage{mathtools}
