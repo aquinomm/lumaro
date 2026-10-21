@@ -9,7 +9,7 @@
 \usepackage{subcaption} % legenda em subimagens e subtabelas
 \newcommand{\source}[1]{\caption*{Fonte: {#1}} } % para adicionar fonte de imagens e tabelas
 \usepackage{enumitem} % criação de listas
-\usepackage{cite} % para citar seções, imagens...
+%\usepackage{cite} % pacote cite desativado para uso com abntex2cite alf
 \usepackage[hidelinks]{hyperref} % para ter itens (citação de seções, sumário...) clicáveis
 \usepackage{indentfirst} % espaçamento do primeiro parágrafo
 %\setcounter{section}{0} % começa as seções em 0
@@ -29,5 +29,5 @@
 \usepackage{ragged2e}
 \titlespacing*{\section}{0.75cm}{12pt}{12pt}
 \titlespacing*{\subsection}{0.75cm}{12pt}{12pt}
-\usepackage[num]{abntex2cite} % bibliografia e citação no padrão ABNT
+\usepackage[alf]{abntex2cite} % bibliografia e citação no padrão ABNT (alfanumérico/autor-data)
 \usepackage{mathtools}

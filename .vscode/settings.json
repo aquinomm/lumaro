@@ -1,0 +1,53 @@
+{
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "xelatex ➞ bibtex ➞ xelatex × 2",
+      "tools": [
+        "xelatex",
+        "bibtex",
+        "xelatex",
+        "xelatex"
+      ]
+    },
+    {
+      "name": "latexmk (xelatex)",
+      "tools": [
+        "latexmk (xelatex)"
+      ]
+    }
+  ],
+  "latex-workshop.latex.tools": [
+    {
+      "name": "xelatex",
+      "command": "xelatex",
+      "args": [
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "%DOC%"
+      ]
+    },
+    {
+      "name": "bibtex",
+      "command": "bibtex",
+      "args": [
+        "%DOCFILE%"
+      ]
+    },
+    {
+      "name": "latexmk (xelatex)",
+      "command": "latexmk",
+      "args": [
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-xelatex",
+        "-outdir=%OUTDIR%",
+        "%DOC%"
+      ]
+    }
+  ],
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.build.forceRecipeUsage": true,
+  "latex-workshop.latex.rootFile.indicator": "\\begin{document}"
+}
