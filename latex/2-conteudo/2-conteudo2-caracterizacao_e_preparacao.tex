@@ -1,6 +1,85 @@
 \section{CARACTERIZAÇÃO E PREPARAÇÃO DOS DADOS}\label{sec:conteudo2}
-\blindtext
-\subsection{Titulo da Subsecao}\label{subsec:conteudo2}
 
-\noindent\textbf{\textit{Titulo da subsubsecao 2}}
+Esta seção se destina a analisar os metadados do \textit{dataset} fornecido, avaliar a qualidade deste e a realizar uma análise exploratória de dados (EDA) inicial, fonte das hipóteses a serem testadas na modelagem.
 
+\subsection{Caracterização dos Dados}\label{subsec:caracterizacao}
+
+\subsubsection{Visão Geral e Metadados}
+O conjunto de dados utilizado neste projeto provém do histórico transacional de vendas de uma rede varejista, complementado por um catálogo cadastral de produtos. 
+
+A base principal de vendas (\texttt{vendas.csv}) registra o fluxo transacional ao longo de todo o ano de 2024 (período de 01 de janeiro a 31 de dezembro de 2024). Essa base é composta por \textbf{556.198 registros} e contempla \textbf{102.943 clientes únicos}, devidamente anonimizados via identificadores alfanuméricos. 
+A granularidade dos dados ocorre ao nível de item faturado: cada linha da tabela corresponde a um produto específico adquirido em um determinado atendimento.
+Cada venda corresponde a um único produto, e várias vendas podem ocorrer num mesmo atendimento.
+
+A base auxiliar de produtos (\texttt{produto.csv}) conta originalmente com 6.500 mercadorias cadastradas, das quais são herdadas as classificações de categorias e subcategorias após o cruzamento via identificador único do produto (\textit{Stock Keeping Unit} -- SKU).
+
+\subsubsection{Dicionário de Dados}
+A Tabela~\ref{tab:dicionario_dados} descreve os atributos disponíveis, sua tipagem original e a respectiva descrição de negócio.
+
+
+\begin{table}[H]
+\centering
+\caption{Dicionário de variáveis da base de vendas e catálogo de produtos}
+\label{tab:dicionario_dados}
+\begin{tabular}{llp{9.5cm}}
+\toprule
+\textbf{Atributo} & \textbf{Tipo} & \textbf{Descrição} \\
+\midrule
+\texttt{COD\_ATEND}    & Texto       & Código identificador do atendimento. \\
+\texttt{COD\_VENDA}    & Texto       & Código identificador da venda. \\
+\texttt{COD\_FILIAL}   & Inteiro     & Código identificador da loja em que o atendimento foi realizado. \\
+\texttt{FILIAL}        & Texto       & Tipo de filial (Rua ou Shopping)/ \\
+\texttt{DATA\_ATEND}   & Data/Hora   & Data de atendimento daquele cliente a respeito daquele produto. \\
+\texttt{SKU}           & Inteiro     & Código do produto. \\
+\texttt{UNID}          & Texto       & Unidade de comercialização do item (ex.: UN, KG). \\
+\texttt{QTD\_VENDA}    & Numérico    & Quantidade vendida do produto. \\
+\texttt{FATUR\_VENDA}  & Numérico    & Faturamento bruto gerado pelo item em reais (R\$). \\
+\texttt{CLI\_CPF}      & Texto       & Código do cliente. \\
+\texttt{NOME\_PRODUTO} & Texto       & Descrição do produto \\
+\texttt{CATEGORIA}     & Texto       & Categoria do produto. \\
+\texttt{SUBCATEGORIA}  & Texto       & Subcategoria do produto. \\
+\bottomrule
+\end{tabular}
+\source{Elaborado pelos autores.}
+\end{table}
+
+\subsubsection{Estatísticas Descritivas}
+Para as variáveis numéricas transacionais contínuas (\texttt{QTD\_VENDA} e \texttt{FATUR\_VENDA}), foram calculadas as métricas de tendência central, dispersão e quartis, sumarizadas na Tabela~\ref{tab:estatisticas_descritivas}.
+
+\begin{table}[H]
+\centering
+\caption{Estatísticas descritivas das variáveis quantitativas da base de vendas}
+\label{tab:estatisticas_descritivas}
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{Variável} & \textbf{Média} & \textbf{Desv. Pad.} & \textbf{Mínimo} & \textbf{Mediana} & \textbf{Q3 (75\%)} & \textbf{Máximo} \\
+\midrule
+\texttt{QTD\_VENDA}        & 0,28  & 0,52  & 0,002 & 0,15 & 0,27  & 100,70 \\
+\texttt{FATUR\_VENDA} (R\$) & 14,11 & 29,04 & 0,03  & 7,82 & 14,26 & 4.994,76 \\
+\bottomrule
+\end{tabular}
+\source{Elaborado pelos autores.}
+\end{table}
+
+Observa-se acentuada assimetria à direita na distribuição do faturamento por item (\texttt{FATUR\_VENDA}), onde a média (R\$~14,11) é substancialmente superior à mediana (R\$~7,82), havendo valores pontuais de até R\$~4.994,76, típicos de compras atípicas ou itens de maior valor agregado. Em relação a \texttt{QTD\_VENDA}, a mediana em 0,15 e percentis fracionários evidenciam a forte presença de produtos comercializados por peso ou a granel (quilograma).
+\subsection{Preparação e Qualidade dos Dados}\label{subsec:preparacao}
+
+\subsubsection{Diagnóstico de Qualidade e Valores Ausentes}
+Antes de iniciar as análises estatísticas e a engenharia de atributos, foi conduzida uma auditoria de integridade sobre as bases de dados para identificar valores nulos ou registros corrompidos.
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Base de Vendas (\texttt{vendas.csv}):} Apresentou integridade completa em todas as 556.198 linhas. Nenhum dos dez atributos continha valores ausentes (\textit{nulls}) ou campos não preenchidos.
+    \item \textbf{Base de Produtos (\texttt{produto.csv}):} Identificou-se que, dos 6.500 produtos catalogados, 2.001 registros não possuíam informação preenchida nos campos \texttt{CATEGORIA} e \texttt{SUBCATEGORIA}, além de 1 registro com \texttt{SKU} nulo. Contudo, ao realizar a junção à esquerda (\textit{left join}) com a base transacional de vendas, constatou-se que \textbf{nenhum desses produtos incompletos foi comercializado no período de 2024}. O conjunto resultante do cruzamento conteve 100\% de preenchimento para todas as mercadorias vendidas, dispensando o preenchimento manual ou correção desses produtos com preenchimento incorreto.
+\end{itemize}
+
+\subsubsection{Adequação de Tipos e Tratamento Temporal}
+Para viabilizar as análises temporais e de comportamento de compra, foram realizados os seguintes ajustes de formatação e tipagem:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Conversão Temporal:} O campo \texttt{DATA\_ATEND}, originalmente importado no formato textual (\textit{string}), foi convertido para o tipo de dado temporal nativo (\texttt{datetime64}), permitindo operações como ordenação cronológica, extração de sazonalidade mensal e cálculo de diferenças temporais entre transações consecutivas.
+    \item \textbf{Semântica de Identificadores:} Variáveis codificadas numericamente como \texttt{COD\_FILIAL} e \texttt{SKU} foram formalmente tratadas como atributos categóricos nominais/identificadores, evitando que operações aritméticas inválidas de média ou soma fossem aplicadas a esses códigos.
+\end{enumerate}
+
+\subsubsection{Tratamento de Granularidade e Agrupamentos}
+Como a base original registra cada item de venda individualmente, um mesmo atendimento (\texttt{COD\_ATEND}) pode conter múltiplas linhas associadas à mesma data (\texttt{DATA\_ATEND}) e cliente (\texttt{CLI\_CPF}). 
+
+Para o estudo de recorrência e cálculo do intervalo entre compras, realizou-se a consolidação das compras no nível de \textbf{visita do cliente}, agrupando por \texttt{CLI\_CPF} e \texttt{DATA\_ATEND}. Adotou-se a premissa de que o dia é a unidade de visitação básica do consumidor à rede varejista, eliminando duplicidades de múltiplos itens faturados em uma mesma ida à loja.
