@@ -1,0 +1,40 @@
+atributo,bloco,descricao,hipotese
+recencia,Recência,Dias desde a última visita até a data de corte,H3
+atraso_relativo,Ritmo,Recência ÷ intervalo médio entre visitas (≥ 2 visitas),H3
+n_visitas,Frequência,Visitas (dias com compra) na janela de observação,H4
+visitas_0_30,Frequência,Visitas entre 1 e 30 dias antes do corte,H6
+visitas_30_60,Frequência,Visitas entre 31 e 60 dias antes do corte,H6
+visitas_60_90,Frequência,Visitas entre 61 e 90 dias antes do corte,H6
+visitas_90_120,Frequência,Visitas entre 91 e 120 dias antes do corte,H6
+dias_desde_primeira,Frequência,Dias desde a primeira visita na janela (antiguidade observada),H4
+ipt_medio,Ritmo,"Intervalo médio entre visitas consecutivas, em dias (≥ 2 visitas)",H3
+ipt_ultimo,Ritmo,"Intervalo entre as duas últimas visitas, em dias (≥ 2 visitas)",H6
+ipt_cv,Regularidade,Coeficiente de variação dos intervalos (≥ 3 visitas),H5
+tend_visitas,Tendência,Visitas nos 60 dias recentes − visitas nos 60 dias anteriores,H6
+tend_gasto,Tendência,"(Gasto recente − gasto anterior) ÷ gasto total, em [−1, 1]",H6
+gasto_total,Valor,Faturamento do cliente na janela (R$),H9
+ticket_medio,Valor,Gasto médio por visita (R$),H9
+itens_por_visita,Cesta,SKUs distintos por visita (média),H7
+n_skus,Cesta,SKUs distintos comprados na janela,H7
+n_categorias,Amplitude,Categorias distintas compradas na janela,H7
+entropia_categorias,Amplitude,Entropia de Shannon da divisão do gasto entre categorias,H7
+share_desconto,Preço,Fração de itens pagos ≥ 5% abaixo da mediana do SKU no mês,controle
+share_shopping,Loja,Fração de visitas na loja de shopping,controle
+multiloja,Loja,Visitou as duas lojas na janela (0/1),controle
+share_fds,Hábito,Fração de visitas em sábados e domingos,controle
+hist_visitas,Histórico,Visitas desde a primeira visita observada na base,H4
+hist_dias,Histórico,Dias desde a primeira visita observada (limite inferior da antiguidade),H4
+hist_taxa,Histórico,Visitas por 30 dias desde a primeira visita observada,H4
+share_bacalhau,Sazonalidade,Participação de 'Bacalhau & Pescados' no gasto da janela,H8
+share_castanhas,Mix,Participação de 'Castanhas & Oleaginosas' no gasto da janela,controle
+share_temperos,Mix,Participação de 'Temperos & Condimentos' no gasto da janela,controle
+share_frutas,Mix,Participação de 'Frutas' no gasto da janela,controle
+share_mixes,Mix,Participação de 'Mixes da Casa' no gasto da janela,controle
+share_graos,Mix,Participação de 'Grãos' no gasto da janela,controle
+share_superalimentos,Mix,Participação de 'Superalimentos & Energéticos' no gasto da janela,controle
+share_matinais,Mix,Participação de 'Matinais' no gasto da janela,controle
+share_aperitivos,Mix,Participação de 'Aperitivos' no gasto da janela,controle
+share_conservas,Mix,Participação de 'Conservas' no gasto da janela,controle
+share_lanchonete,Mix,Participação de 'Lanchonete' no gasto da janela,controle
+share_azeites,Mix,Participação de 'Azeites & Vinagres' no gasto da janela,controle
+share_ervas,Mix,Participação de 'Ervas & Chás' no gasto da janela,controle
