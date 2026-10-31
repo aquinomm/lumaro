@@ -1,3 +1,44 @@
-.venv
-data
-.DS_STORE
+# --- Ambiente Python ---
+.venv/
+venv/
+env/
+.env
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# --- Dados (fornecidos pela Visagio; não versionar) ---
+data/raw/*
+data/interim/*
+data/processed/*
+!data/**/.gitkeep
+**/vendas.csv
+**/produto.csv
+*.parquet
+
+# --- Modelos treinados (reprodutíveis a partir dos notebooks) ---
+models/*
+!models/.gitkeep
+
+# --- Template do relatório (material da disciplina) ---
+template/
+
+# --- Sistema operacional / editores ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# --- LaTeX (arquivos auxiliares de compilação) ---
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.bbl
+*.blg
