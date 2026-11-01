@@ -1,7 +1,117 @@
 \section{MODELAGEM E ANÁLISE DOS DADOS}\label{sec:conteudo3}
-\blindtext
 
-\subsection{Titulo da Subsecao}\label{subsec:conteudo3}
+Esta seção apresenta a estruturação dos dados para a predição de evasão de clientes (\textit{churn}), abrangendo a construção das variáveis explicativas, a definição das janelas temporais de observação e maturação, a divisão das bases de validação e a configuração dos modelos avaliados.
 
-\noindent\textbf{\textit{Titulo da subsubsecao 3}}
+\subsection{Estruturação das Bases e Construção de Safras}\label{subsec:arquitetura_sql}
 
+\subsubsection{Organização dos Dados}
+Para organizar o processamento e separar os dados brutos da etapa de modelagem, os registros históricos de vendas e o catálogo de produtos foram consolidados em um banco de dados relacional. A estrutura foi dividida em três camadas:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Base Transacional:} Contém o histórico original de vendas na granularidade de item comercializado por atendimento, cruzado com as informações cadastrais de categoria dos produtos.
+    \item \textbf{Base de Atributos (\textit{Book of Features}):} Reúne os indicadores comportamentais agregados por cliente para cada data de referência mensal (\texttt{dt\_ref}), sem incluir a variável resposta.
+    \item \textbf{Tabela Analítica de Modelagem (ABT):} Resulta do cruzamento entre a base de atributos e o histórico de compras nos meses subsequentes à data de referência, atribuindo a cada cliente o rótulo de evasão (\texttt{flag\_churn}).
+\end{enumerate}
+
+\subsubsection{Engenharia de Atributos e Janela de Observação}
+A construção das variáveis explicativas baseia-se em fotografias mensais (\textit{snapshots}), definidas sempre no primeiro dia de cada mês (\texttt{dt\_ref}). Para cada data de referência, são consideradas as transações realizadas pelo cliente nos \textbf{6 meses imediatamente anteriores}:
+\begin{equation}
+    \texttt{DATA\_ATEND} \in \big[\text{date}(\texttt{dt\_ref}, \text{`-6 months'}), \; \texttt{dt\_ref}\big)
+\end{equation}
+De forma complementar, consulta-se todo o histórico anterior a \texttt{dt\_ref} para calcular o tempo total de relacionamento do cliente com a rede desde a sua primeira compra (\texttt{idade\_base}).
+
+Ao todo, foram construídas \textbf{32 variáveis explicativas} numéricas por cliente, agrupadas em cinco dimensões comportamentais, conforme descrito na Tabela~\ref{tab:book_features}.
+
+\begin{table}[H]
+\centering
+\caption{Grupos de variáveis explicativas construídas para a modelagem}
+\label{tab:book_features}
+\footnotesize
+\begin{tabular}{p{3.2cm}p{4.3cm}p{6.5cm}}
+\toprule
+\textbf{Dimensão} & \textbf{Atributos} & \textbf{Descrição (Janela de 6 Meses)} \\
+\midrule
+Relacionamento e Recência & \raggedright\texttt{idade\_base}, \texttt{idade\_base\_mes}, \texttt{prim\_compra}, \texttt{qtd\_dias\_ultima\_compra} & Tempo (em dias e meses) desde a primeira compra histórica até \texttt{dt\_ref}, data da primeira compra na janela e dias decorridos desde o último atendimento. \\
+\addlinespace
+Frequência e Regularidade & \raggedright\texttt{qtde\_visitas}, \texttt{avg\_compras\_mes}, \texttt{qtd\_mes\_ativacao}, \texttt{prop\_ativacao} & Total de atendimentos distintos, média mensal de visitas, número de meses com compra e proporção de meses ativos no semestre. \\
+\addlinespace
+Monetário e Volume & \raggedright\texttt{faturamento}, \texttt{ticket\_medio}, \texttt{qtde\_produto}, \texttt{qtde\_produto\_dst} & Gasto total acumulado, gasto médio por visita, volume total de itens adquiridos e variedade de produtos (SKUs distintos). \\
+\addlinespace
+Canal (Rua vs. Shopping) & \raggedright\texttt{qtde\_visitas\_rua}, \texttt{qtde\_visitas\_shopping}, \texttt{prop\_visitas\_*}, \texttt{fatur\_*}, \texttt{prop\_fatur\_*} & Quantidade de visitas e faturamento segmentados entre lojas de Rua e de Shopping, em valores absolutos e proporcionais. \\
+\addlinespace
+Mix de Categorias & \raggedright\texttt{qtde\_categorias\_dst}, \texttt{fatur\_[cat]}, \texttt{prop\_fatur\_[cat]} & Número de categorias distintas consumidas, além do gasto absoluto e proporcional nas 6 principais categorias (\textit{Castanhas}, \textit{Bacalhau}, \textit{Temperos}, \textit{Frutas}, \textit{Mixes} e \textit{Grãos}). \\
+\bottomrule
+\end{tabular}
+\source{Elaborado pelos autores.}
+\end{table}
+
+\subsubsection{Definição da Variável Resposta e Recorte das Safras}
+A separação entre o cálculo de atributos e a marcação da variável resposta evita vazamento de dados temporais e reflete a operação real do modelo, na qual o comportamento futuro ainda não é conhecido no momento da predição.
+
+Para compor a tabela de treinamento (ABT), cada cliente ativo em uma data de referência \texttt{dt\_ref} é acompanhado ao longo de uma \textbf{janela de maturação de 3 meses no futuro}:
+\begin{equation}
+    \texttt{DATA\_ATEND} \in \big[\texttt{dt\_ref}, \; \text{date}(\texttt{dt\_ref}, \text{`+3 months'})\big)
+\end{equation}
+Seguindo o critério de 90 dias estabelecido na análise exploratória, a variável alvo \texttt{flag\_churn} assume valor $0$ (cliente retido) caso haja pelo menos um atendimento registrado no trimestre seguinte, e valor $1$ (evasão) caso contrário:
+\begin{equation}
+    \texttt{flag\_churn} = 
+    \begin{cases} 
+        0 \text{ (Retido)}, & \text{se houver compra nos 3 meses seguintes} \\
+        1 \text{ (\textit{Churn})}, & \text{caso contrário.}
+    \end{cases}
+\end{equation}
+
+Como os dados disponíveis compreendem o ano de 2024 (02/01/2024 a 31/12/2024), a definição das safras obedece a três restrições temporais:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Início em julho de 2024 (\texttt{2024-07-01}):} Primeira data que dispõe de 6 meses completos de histórico prévio (janeiro a junho de 2024) para o cálculo das variáveis explicativas.
+    \item \textbf{Última safra maturada em outubro de 2024 (\texttt{2024-10-01}):} Última data cujo trimestre subsequente de avaliação do \textit{churn} (outubro a dezembro de 2024) está integralmente contido na base. Datas posteriores não possuem janela futura completa em 2024 e, por isso, não entram no treinamento.
+    \item \textbf{Safra de predição em janeiro de 2025 (\texttt{2025-01-01}):} Consolida o comportamento dos clientes ativos no segundo semestre de 2024 (julho a dezembro) para estimar o risco de evasão no primeiro trimestre de 2025.
+\end{itemize}
+
+A Tabela~\ref{tab:resumo_safras} resume os períodos, a quantidade de clientes e a taxa de \textit{churn} de cada safra.
+
+\begin{table}[H]
+\centering
+\caption{Cronograma de safras, janelas temporais, volumetria e taxa de \textit{churn}}
+\label{tab:resumo_safras}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllrr}
+\toprule
+\textbf{Safra (\texttt{dt\_ref})} & \textbf{Janela de Atributos (6m)} & \textbf{Janela de \textit{Target} (3m)} & \textbf{Finalidade} & \textbf{Clientes} & \textbf{Taxa \textit{Churn}} \\
+\midrule
+\texttt{2024-07-01} & 01/01/24 a 30/06/24 & 01/07/24 a 30/09/24 & Treino / Teste (ABT) & 65.356 & 59,06\% \\
+\texttt{2024-08-01} & 01/02/24 a 31/07/24 & 01/08/24 a 31/10/24 & Treino / Teste (ABT) & 67.186 & 59,49\% \\
+\texttt{2024-09-01} & 01/03/24 a 31/08/24 & 01/09/24 a 30/11/24 & Treino / Teste (ABT) & 69.540 & 60,74\% \\
+\texttt{2024-10-01} & 01/04/24 a 30/09/24 & 01/10/24 a 31/12/24 & Validação \textit{Out-Of-Time} & 69.701 & 59,78\% \\
+\midrule
+\texttt{2025-01-01} & 01/07/24 a 31/12/24 & 01/01/25 a 31/03/25* & Predição & 73.101 & \textit{A prever} \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores. *Período futuro não disponível na base histórica.}
+\end{table}
+
+\subsection{Estratégia de Validação e Algoritmos Avaliados}\label{subsec:validacao_algoritmos}
+
+\subsubsection{Divisão entre Treino, Teste e Validação Temporal (\textit{Out-Of-Time})}
+As quatro safras maturadas totalizam 271.783 registros e foram divididas respeitando a ordem cronológica dos dados:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Desenvolvimento (Treino e Teste \textit{In-Time}):} Composto pelas safras de julho, agosto e setembro de 2024 (202.082 registros), subdivididas aleatoriamente em \textbf{80\% para treino} (161.665 registros) e \textbf{20\% para teste} (40.417 registros).
+    \item \textbf{Validação \textit{Out-Of-Time} (OOT):} Composta integralmente pela safra de outubro de 2024 (69.701 registros), utilizada para avaliar a capacidade de generalização dos modelos em um período futuro não visto durante o ajuste.
+\end{enumerate}
+
+Os campos de identificação e datas (\texttt{dt\_ref}, \texttt{CLI\_CPF} e \texttt{prim\_compra}) foram excluídos das variáveis preditoras para que o aprendizado dependa apenas do comportamento relativo de compra, sem vincular as regras a datas específicas do calendário.
+
+\subsubsection{Modelos Testados}
+Foram comparados sete algoritmos de classificação supervisionada para dados tabulares:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Árvore de Decisão sem Poda:} Treinada sem limite de profundidade, utilizada como referência para ilustrar o efeito de sobreajuste (\textit{overfitting}).
+    \item \textbf{Árvore de Decisão com Poda:} Parametrizada com profundidade máxima de 16 níveis e mínimo de 50 observações por nó folha, restringindo a criação de ramos excessivamente específicos.
+    \item \textbf{Regressão Logística:} Modelo linear ajustado sobre os atributos previamente padronizados (média zero e desvio padrão unitário), com limite de 1.000 iterações.
+    \item \textbf{SVM Linear:} Classificador de margem máxima linear com padronização prévia das variáveis e calibração probabilística via validação cruzada em 3 pastas. Optou-se pela formulação linear devido ao custo computacional proibitivo de kernels não lineares para 161 mil registros.
+    \item \textbf{Random Forest:} Comitê de 100 árvores de decisão independentes (\textit{bagging}), com profundidade máxima de 10 níveis e mínimo de 30 amostras por folha.
+    \item \textbf{Gradient Boosting:} Comitê sequencial baseado em histogramas, configurado com até 150 árvores, profundidade máxima de 8 níveis e taxa de aprendizado de 0,05.
+    \item \textbf{Rede Neural (MLP):} \textit{Multi-Layer Perceptron} com variáveis padronizadas, duas camadas ocultas (64 e 32 neurônios), função de ativação ReLU, limite de 80 épocas e parada antecipada (\textit{early stopping}).
+\end{itemize}
+
+Para cada modelo, foram obtidas tanto a classificação binária (limiar de probabilidade $p \ge 0,50$) quanto a probabilidade contínua de evasão, utilizada para o cálculo da área sob a curva ROC (AUC) e para a ordenação dos clientes por nível de risco.

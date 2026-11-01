@@ -83,3 +83,137 @@ Para viabilizar as análises temporais e de comportamento de compra, foram reali
 Como a base original registra cada item de venda individualmente, um mesmo atendimento (\texttt{COD\_ATEND}) pode conter múltiplas linhas associadas à mesma data (\texttt{DATA\_ATEND}) e cliente (\texttt{CLI\_CPF}). 
 
 Para o estudo de recorrência e cálculo do intervalo entre compras, realizou-se a consolidação das compras no nível de \textbf{visita do cliente}, agrupando por \texttt{CLI\_CPF} e \texttt{DATA\_ATEND}. Adotou-se a premissa de que o dia é a unidade de visitação básica do consumidor à rede varejista, eliminando duplicidades de múltiplos itens faturados em uma mesma ida à loja.
+
+\subsection{Análise Exploratória de Dados (EDA) e Teste de Hipóteses}\label{subsec:eda}
+
+Com os dados higienizados e agrupados no nível de visita diária por cliente (totalizando 297.257 visitas únicas ao longo de 2024), conduziu-se a Análise Exploratória de Dados estruturada em torno da definição empírica do ciclo de recompra e da validação de cinco hipóteses de negócio que nortearam a engenharia de atributos da modelagem.
+
+\subsubsection{Ciclo de Recompra e Definição Empírica da Janela de \textit{Churn}}
+Inicialmente, constatou-se que, dos 102.943 clientes únicos atendidos em 2024, \textbf{50,20\% (51.678 consumidores)} realizaram apenas uma única visita no ano (\textit{one-timers}), enquanto \textbf{49,80\% (51.265 consumidores)} apresentaram comportamento de recompra (\textit{recurring}), sendo responsáveis por 245.579 visitas.
+
+Para determinar a partir de quantos dias de inatividade um consumidor pode ser considerado em evasão (\textit{churn}), calculou-se a diferença temporal em dias entre visitas consecutivas de todos os clientes recorrentes ($N = 194.314$ intervalos entre compras). Os quantis da distribuição do tempo entre visitas revelaram um padrão bem definido:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{1º Quartil (25\%):} 14,0 dias (ciclo quinzenal de reposição);
+    \item \textbf{Mediana (50\%):} 29,0 dias (ciclo tipicamente mensal);
+    \item \textbf{3º Quartil (75\%):} 63,0 dias (ciclo bimestral);
+    \item \textbf{Percentil 90\%:} 119,0 dias.
+\end{itemize}
+
+Observou-se que \textbf{83,88\% de todas as recompras da rede ocorrem em até 90 dias (3 meses)} após a visita anterior. Caso um cliente ultrapasse 90 dias sem retornar à loja, a probabilidade empírica de retorno espontâneo cai drasticamente. Esse resultado fundamentou estatisticamente a adoção da \textbf{janela de 90 dias (3 meses)} como critério oficial para a definição da variável resposta (\texttt{flag\_churn}) na etapa de modelagem.
+
+\subsubsection{H1: Clientes de Passagem (\textit{One-Timers}) vs. Clientes Desengajados}
+A primeira hipótese investigou se o grupo de clientes inativos há mais de 90 dias no encerramento do ano (corte em \texttt{02/10/2024}, totalizando 54.985 clientes em \textit{churn}) é composto majoritariamente por compradores ocasionais de visita única ou por clientes fiéis que abandonaram a marca.
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Clientes de Passagem (\textit{One-Timers} em \textit{churn}):} 36.802 consumidores (\textbf{66,93\%} do total em \textit{churn});
+    \item \textbf{Clientes Recorrentes Desengajados ($\ge 2$ visitas em \textit{churn}):} 18.183 consumidores (\textbf{33,07\%} do total em \textit{churn}).
+\end{itemize}
+A hipótese \textbf{H1 foi confirmada}: dois terços da evasão bruta decorrem da falha na conversão da primeira para a segunda compra, justificando a criação de variáveis explícitas de quantidade de visitas (\texttt{qtde\_visitas}) e meses de ativação (\texttt{qtd\_mes\_ativacao}) no modelo preditivo.
+
+\subsubsection{H2.1: Aumento Progressivo do Intervalo entre Visitas antes do \textit{Churn}}
+Avaliou-se a hipótese de que clientes recorrentes apresentariam um espaçamento gradualmente maior entre suas três últimas compras (\texttt{antepenultimo\_intervalo}, \texttt{penultimo\_intervalo} e \texttt{ultimo\_intervalo}) antes de entrarem em \textit{churn}. A comparação entre clientes ativos (\texttt{churn = False}) e evadidos (\texttt{churn = True}) com ao menos quatro visitas registradas é apresentada na Tabela~\ref{tab:eda_intervalos}.
+
+\begin{table}[H]
+\centering
+\caption{Evolução das médias e medianas dos três últimos intervalos entre compras (em dias)}
+\label{tab:eda_intervalos}
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{3}{c}{\textbf{Média do Intervalo (dias)}} & \multicolumn{3}{c}{\textbf{Mediana do Intervalo (dias)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{Status no Fim do Ano} & \textbf{Antepenúlt.} & \textbf{Penúlt.} & \textbf{Último} & \textbf{Antepenúlt.} & \textbf{Penúlt.} & \textbf{Último} \\
+\midrule
+Ativo (\texttt{churn = False}) & 48,3 & 48,5 & 50,6 & 33,0 & 34,0 & 36,0 \\
+Em Evasão (\texttt{churn = True}) & 41,6 & 41,6 & 47,3 & 31,0 & 32,0 & 36,0 \\
+\bottomrule
+\end{tabular}
+\source{Elaborado pelos autores.}
+\end{table}
+
+Constatou-se que as medianas evoluem de forma praticamente idêntica nos dois grupos ($33 \rightarrow 34 \rightarrow 36$ dias nos ativos contra $31 \rightarrow 32 \rightarrow 36$ dias nos evadidos), e a proporção de clientes cujo intervalo aumentou antes da última compra foi semelhante (54\% no grupo em \textit{churn} contra 51\% nos ativos). Logo, a hipótese \textbf{H2.1 foi refutada}, demonstrando que a perda de ritmo isolada entre visitas consecutivas não discrimina a evasão, sendo mais eficaz utilizar a recência absoluta até a data de referência (\texttt{qtd\_dias\_ultima\_compra}) e a média global de compras por mês (\texttt{avg\_compras\_mes}).
+
+\subsubsection{H2.2: Influência da Categoria de Produto na Fidelização e Recorrência}
+Cruzando a base transacional com o catálogo de produtos (\texttt{CATEGORIA}), investigou-se se o perfil da cesta adquirida impacta a retenção do consumidor. A Tabela~\ref{tab:eda_categorias} sumariza o alcance de clientes únicos, a taxa de recorrência (proporção de compradores da categoria que realizaram mais de uma visita no ano), a taxa de \textit{churn} no último trimestre e o faturamento anual por categoria.
+
+\begin{table}[H]
+\centering
+\caption{Desempenho de retenção, recorrência e faturamento anual por categoria de produto}
+\label{tab:eda_categorias}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Categoria de Produto} & \textbf{Clientes Únicos} & \textbf{Taxa de Recorrência (\%)} & \textbf{Taxa de \textit{Churn} (\%)} & \textbf{Faturamento Anual (R\$)} \\
+\midrule
+Castanhas \& Oleaginosas       & 30.615 & 69,5\% & 42,1\% & 1.663.514,00 \\
+Bacalhau \& Pescados           & 13.511 & 61,2\% & 25,6\% & 1.486.920,00 \\
+Temperos \& Condimentos        & 55.445 & 62,0\% & 48,6\% &   940.771,64 \\
+Frutas                         & 28.486 & 71,9\% & 38,2\% &   932.519,00 \\
+Mixes da Casa                  & 16.624 & 67,8\% & 44,3\% &   445.741,95 \\
+Grãos                          & 21.538 & 72,4\% & 42,3\% &   375.510,20 \\
+Superalimentos \& Energéticos  & 10.221 & 70,6\% & 42,8\% &   284.057,30 \\
+Matinais                       & 17.781 & 74,4\% & 40,8\% &   227.005,13 \\
+Aperitivos                     &  9.465 & 74,1\% & 40,2\% &   220.907,28 \\
+Conservas                      &  5.732 & 76,0\% & 32,8\% &   138.752,75 \\
+Lanchonete                     &  7.527 & 64,4\% & 49,0\% &   127.054,27 \\
+Azeites \& Vinagres            &  2.777 & 75,2\% & 41,0\% &   105.960,17 \\
+Ervas \& Chás                  &  7.015 & 69,0\% & 41,4\% &    98.113,84 \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores.}
+\end{table}
+
+Os dados confirmam a hipótese \textbf{H2.2}: itens de reposição doméstica e rotina alimentar — como \textit{Conservas} (76,0\% de recorrência), \textit{Azeites \& Vinagres} (75,2\%), \textit{Matinais} (74,4\%), \textit{Grãos} (72,4\%) e \textit{Frutas} (71,9\%) — geram maior fidelização ao longo do ano. Em contrapartida, categorias de consumo imediato ou esporádico, como \textit{Lanchonete} (49,0\% de \textit{churn}) e \textit{Temperos \& Condimentos} (48,6\% de \textit{churn}), concentram maior proporção de clientes de passagem. Nota-se ainda que as seis maiores categorias em receita (\textit{Castanhas}, \textit{Bacalhau}, \textit{Temperos}, \textit{Frutas}, \textit{Mixes} e \textit{Grãos}) representam mais de 80\% do faturamento da rede, motivo pelo qual foram selecionadas para compor as variáveis setoriais do \textit{Book of Features}.
+
+\subsubsection{H2.3: Sazonalidade Mensal e Efeito de Feriados}
+Ao avaliar a evolução mensal do faturamento e do retorno de clientes ao longo dos 12 meses de 2024 frente ao número de feriados nacionais de cada mês, verificou-se correlação linear quase nula/negativa entre a quantidade de feriados e o volume de clientes recorrentes ($r = -0,121$), bem como correlação fraca com o faturamento mensal ($r = +0,108$). Meses sem nenhum feriado nacional (junho, julho e agosto) mantiveram fluxo elevado e crescente de retorno (entre 13.188 e 15.779 clientes recorrentes ativos). Os dois grandes picos de faturamento da rede ocorreram em \textbf{março} (R\$~839,3 mil, impulsionado pela Páscoa) e em \textbf{dezembro} (R\$~1,49 milhão, impulsionado pelas festas de fim de ano e venda de bacalhau/oleaginosas). Assim, a hipótese \textbf{H2.3 foi refutada}: o retorno de clientes não depende da quantidade de feriados do mês, mas sim de marcos sazonais gastronômicos específicos.
+
+\subsubsection{H3: Comportamento por Tipo de Filial (\texttt{RUA}, \texttt{SHOPPING} e Híbrido)}
+Por fim, testou-se a hipótese de que o formato físico da loja influencia o perfil de retenção. Os 102.943 clientes foram classificados em três grupos segundo seu histórico de visitação: exclusivos de lojas de \texttt{RUA}, exclusivos de lojas de \texttt{SHOPPING} e clientes multicanais (\texttt{Ambos / Híbrido}). Os resultados encontram-se na Tabela~\ref{tab:eda_filial}.
+
+\begin{table}[H]
+\centering
+\caption{Comparativo de retenção, frequência e gasto médio anual por canal de atendimento}
+\label{tab:eda_filial}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Canal do Cliente} & \textbf{Total de Clientes} & \textbf{Taxa de \textit{Churn} (\%)} & \textbf{Taxa \textit{One-Timer} (\%)} & \textbf{Média Visitas/Ano} & \textbf{Gasto Médio Anual (R\$)} \\
+\midrule
+Exclusivo \texttt{SHOPPING} & 53.576 & 55,40\% & 54,69\% & 2,60 &  72,65 \\
+Exclusivo \texttt{RUA}      & 47.200 & 52,07\% & 47,41\% & 3,12 &  77,73 \\
+Ambos (Multicanal Híbrido)  &  2.167 & 33,41\% &  0,05\% & 5,05 & 132,79 \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores.}
+\end{table}
+
+A hipótese \textbf{H3 foi confirmada}: lojas de \texttt{SHOPPING} atraem maior fluxo de passeio e compra por impulso (54,69\% de \textit{one-timers} e 55,40\% de \textit{churn}), enquanto lojas de \texttt{RUA} apresentam clientela mais recorrente (3,12 visitas/ano e menor \textit{churn} de 52,07\%). Destacam-se os clientes multicanais (que frequentam tanto Rua quanto Shopping), cuja taxa de \textit{churn} cai para apenas \textbf{33,41\%}, com frequência média de 5,05 visitas/ano e gasto anual 82\% superior (R\$~132,79). Essa evidência motivou a inclusão das variáveis de frequência e faturamento separadas por canal (\texttt{qtde\_visitas\_rua}, \texttt{qtde\_visitas\_shopping}, \texttt{fatur\_rua} e \texttt{fatur\_shopping}) no modelo preditivo.
+
+\subsubsection{Síntese das Hipóteses Exploratórias}
+A Tabela~\ref{tab:sintese_hipoteses_eda} consolida o veredito de cada hipótese testada na EDA e seu impacto direto na construção da modelagem subsequente.
+
+\begin{table}[H]
+\centering
+\caption{Síntese dos testes de hipóteses da Análise Exploratória de Dados (EDA)}
+\label{tab:sintese_hipoteses_eda}
+\footnotesize
+\begin{tabular}{p{2.8cm}p{4.5cm}cp{6.2cm}}
+\toprule
+\textbf{Hipótese} & \textbf{Enunciado} & \textbf{Veredito} & \textbf{Evidência Numérica Principal} \\
+\midrule
+Definição de \textit{Churn} & O \textit{churn} caracteriza-se após 90 dias sem compras. & \textbf{Confirmada} & Mediana de recompra de 29 dias; 83,88\% de todas as recompras ocorrem em até 90 dias. \\
+\addlinespace
+H1: Passagem vs. Desengajados & No grupo em \textit{churn} coexistem clientes de compra única e recorrentes desengajados. & \textbf{Confirmada} & 50,20\% da base geral é \textit{one-timer}; dentro do \textit{churn}, 66,93\% são \textit{one-timers} e 33,07\% são recorrentes. \\
+\addlinespace
+H2.1: Aumento do Intervalo & O intervalo entre compras aumenta progressivamente antes do \textit{churn}. & \textbf{Refutada} & Medianas dos 3 últimos intervalos praticamente iguais entre ativos ($33 \rightarrow 34 \rightarrow 36$d) e evadidos ($31 \rightarrow 32 \rightarrow 36$d). \\
+\addlinespace
+H2.2: Categorias de Rotina & Categorias de rotina doméstica geram maior fidelização que itens ocasionais. & \textbf{Confirmada} & Maior recorrência em Conservas (76\%), Azeites (75\%) e Matinais (74\%); maior \textit{churn} em Lanchonete (49\%) e Temperos (48,6\%). \\
+\addlinespace
+H2.3: Efeito Feriados & Meses com mais feriados apresentam maior retorno de clientes. & \textbf{Refutada} & Correlação levemente negativa ($r = -0,121$); meses sem feriados (jun--ago) tiveram alto retorno (13k--15k clientes). \\
+\addlinespace
+H3: Tipo de Filial & O canal (\texttt{SHOPPING} vs. \texttt{RUA}) influencia a retenção e a frequência. & \textbf{Confirmada} & Shopping tem maior \textit{churn} (55,4\%) e \textit{one-timers} (54,7\%); Rua tem maior frequência (3,12 vis./ano); Híbridos têm apenas 33,4\% de \textit{churn}. \\
+\bottomrule
+\end{tabular}
+\source{Elaborado pelos autores.}
+\end{table}

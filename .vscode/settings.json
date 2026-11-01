@@ -49,5 +49,14 @@
   ],
   "latex-workshop.latex.recipe.default": "first",
   "latex-workshop.latex.build.forceRecipeUsage": true,
-  "latex-workshop.latex.rootFile.indicator": "\\begin{document}"
+  "latex-workshop.latex.rootFile.indicator": "\\begin{document}",
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "SQLite",
+      "name": "database",
+      "database": "${workspaceFolder:projeto}/files/data/banco_de_dados.db"
+    }
+  ],
+  "sqltools.useNodeRuntime": true
 }

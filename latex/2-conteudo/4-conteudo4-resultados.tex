@@ -1,7 +1,167 @@
-\section{APRESENTAÇÃO DOS RESULTADOS}\label{sec:conteudo3}
-\blindtext
+\section{APRESENTAÇÃO DOS RESULTADOS}\label{sec:conteudo4}
 
-\subsection{Titulo da Subsecao}\label{subsec:conteudo3}
+Esta seção apresenta a avaliação comparativa dos modelos nas bases de treino, teste e validação temporal (\textit{Out-Of-Time} -- OOT), a análise de importância e correlação das variáveis e os resultados da predição de \textit{churn} para o início de 2025.
 
-\noindent\textbf{\textit{Titulo da subsubsecao 3}}
+\subsection{Desempenho Comparativo dos Modelos}\label{subsec:desempenho_modelos}
 
+Os sete algoritmos foram avaliados pelas métricas de \textbf{Acurácia}, \textbf{F1-Score} e área sob a curva ROC (\textbf{ROC AUC}). Adotou-se o ROC AUC na base OOT (safra de outubro de 2024) como critério principal de escolha, pois o uso prático do modelo requer a ordenação dos clientes pela probabilidade de evasão. Os resultados consolidados estão na Tabela~\ref{tab:comparativo_modelos}.
+
+\begin{table}[H]
+\centering
+\caption{Comparativo de desempenho dos modelos (ordenado por ROC AUC na base OOT)}
+\label{tab:comparativo_modelos}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrrr}
+\toprule
+\textbf{Modelo} & \textbf{Acc Treino} & \textbf{Acc Teste} & \textbf{Acc OOT} & \textbf{AUC Treino} & \textbf{AUC Teste} & \textbf{AUC OOT} & \textbf{F1 Teste} & \textbf{F1 OOT} \\
+\midrule
+\textbf{Random Forest} & 0,7263 & \textbf{0,7210} & 0,7205 & 0,7630 & 0,7541 & \textbf{0,7620} & \textbf{0,7888} & \textbf{0,7828} \\
+Gradient Boosting (HistGB) & 0,7238 & 0,7209 & \textbf{0,7209} & 0,7607 & \textbf{0,7545} & \textbf{0,7620} & 0,7882 & 0,7823 \\
+Rede Neural (MLP) & 0,7187 & 0,7177 & 0,7181 & 0,7523 & 0,7508 & 0,7594 & 0,7862 & 0,7787 \\
+Regressão Logística & 0,7142 & 0,7157 & 0,7164 & 0,7460 & 0,7479 & 0,7573 & 0,7862 & 0,7794 \\
+SVM Linear & 0,7127 & 0,7145 & 0,7141 & 0,7454 & 0,7473 & 0,7571 & 0,7840 & 0,7750 \\
+Decision Tree (Com Poda) & 0,7330 & 0,7098 & 0,7064 & 0,7757 & 0,7371 & 0,7442 & 0,7762 & 0,7684 \\
+Decision Tree (Sem Poda) & \textbf{0,9940} & 0,6404 & 0,6313 & \textbf{0,9999} & 0,6285 & 0,6208 & 0,6983 & 0,6881 \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores.}
+\end{table}
+
+A comparação entre os modelos destaca três pontos principais:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Sobreajuste na árvore sem poda:} Sem restrição de crescimento, a árvore memorizou a base de treino (acurácia de 99,40\% e AUC de 0,9999), mas teve o pior desempenho fora da amostra, caindo para 63,13\% de acurácia e 0,6208 de AUC na base OOT. A introdução de poda reduziu essa perda de generalização, elevando a acurácia OOT para 70,64\% e o AUC OOT para 0,7442.
+    \item \textbf{Estabilidade dos modelos lineares e da rede neural:} A Regressão Logística (AUC OOT de 0,7573) e o SVM Linear (0,7571) mantiveram métricas consistentes entre treino, teste e validação temporal, indicando que as variáveis construídas possuem relação bem comportada com o risco de evasão. A Rede Neural (MLP) obteve ganho marginal sobre os modelos lineares (AUC OOT de 0,7594).
+    \item \textbf{Melhor desempenho dos comitês de árvores:} O \textbf{Random Forest} e o \textbf{Gradient Boosting} alcançaram os melhores resultados gerais, empatando com \textbf{ROC AUC de 0,7620} e acurácia próxima a \textbf{72,1\%} na validação OOT. O \textbf{Random Forest} foi escolhido como modelo final por apresentar métricas ligeiramente superiores de F1-Score tanto no teste (0,7888) quanto na base OOT (0,7828).
+\end{enumerate}
+
+\subsection{Importância das Variáveis e Análise de Correlação}\label{subsec:importancia_correlacao}
+
+\subsubsection{Importância dos Atributos}
+A importância relativa das variáveis no modelo escolhido (\textit{Random Forest}), medida pela redução média de impureza de Gini, mostra que \textbf{12 atributos concentram 90,68\%} da capacidade preditiva, conforme apresentado na Tabela~\ref{tab:feature_importance}.
+
+\begin{table}[H]
+\centering
+\caption{As 12 variáveis de maior importância no modelo \textit{Random Forest}}
+\label{tab:feature_importance}
+\begin{tabular}{rlrrr}
+\toprule
+\textbf{Pos.} & \textbf{Variável Explicativa} & \textbf{Importância} & \textbf{Importância (\%)} & \textbf{Acumulado (\%)} \\
+\midrule
+1º  & \texttt{qtde\_visitas}            & 0,2202 & 22,02\% & 22,02\% \\
+2º  & \texttt{qtd\_mes\_ativacao}       & 0,1933 & 19,33\% & 41,35\% \\
+3º  & \texttt{qtde\_produto}            & 0,1133 & 11,33\% & 52,68\% \\
+4º  & \texttt{qtde\_produto\_dst}       & 0,0578 &  5,78\% & 58,46\% \\
+5º  & \texttt{qtde\_visitas\_rua}       & 0,0538 &  5,38\% & 63,84\% \\
+6º  & \texttt{qtde\_categorias\_dst}    & 0,0485 &  4,85\% & 68,69\% \\
+7º  & \texttt{qtde\_visitas\_shopping}  & 0,0468 &  4,68\% & 73,36\% \\
+8º  & \texttt{prop\_ativacao}           & 0,0381 &  3,81\% & 77,17\% \\
+9º  & \texttt{qtd\_dias\_ultima\_compra}& 0,0371 &  3,71\% & 80,88\% \\
+10º & \texttt{idade\_base\_mes}         & 0,0360 &  3,60\% & 84,48\% \\
+11º & \texttt{idade\_base}              & 0,0336 &  3,36\% & 87,83\% \\
+12º & \texttt{faturamento}              & 0,0284 &  2,84\% & 90,68\% \\
+\bottomrule
+\end{tabular}
+\source{Elaborado pelos autores. As 20 variáveis restantes somam os 9,32\% complementares.}
+\end{table}
+
+Os resultados indicam que a frequência total de compras (\texttt{qtde\_visitas}, com 22,02\%) e a regularidade mensal (\texttt{qtd\_mes\_ativacao}, com 19,33\%) são os principais fatores de retenção, respondendo juntos por 41,35\% da decisão do modelo. Por outro lado, as 12 variáveis ligadas ao gasto absoluto e proporcional nas seis categorias específicas de produtos somam apenas 4,06\% da importância total. Isso mostra que a retenção é explicada sobretudo pelo hábito de visitação e pela variedade geral da cesta (\texttt{qtde\_produto\_dst} e \texttt{qtde\_categorias\_dst}), e não pelo consumo de uma categoria isolada.
+
+\subsubsection{Multicolinearidade e Seleção de Variáveis}
+Para identificar redundâncias entre os 32 atributos, calculou-se a correlação linear de Pearson ($r$) na base de treino. A Tabela~\ref{tab:correlacoes_altas} apresenta todos os 14 pares de variáveis com correlação forte ($|r| \ge 0,80$) e indica, em cada caso, o atributo de menor importância no modelo como candidato à remoção.
+
+\begin{table}[H]
+\centering
+\caption{Pares de variáveis com alta correlação ($|r| \ge 0,80$) e indicação de descarte}
+\label{tab:correlacoes_altas}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrll}
+\toprule
+\textbf{Variável A} & \textbf{Variável B} & \textbf{Corr. ($r$)} & \textbf{Imp. A} & \textbf{Imp. B} & \textbf{Candidata a Remover} \\
+\midrule
+\texttt{prop\_visitas\_rua} & \texttt{prop\_visitas\_shopping} & $-1,0000$ & 0,09\% & 0,13\% & \texttt{prop\_visitas\_rua} \\
+\texttt{prop\_fatur\_rua} & \texttt{prop\_fatur\_shopping} & $-1,0000$ & 0,15\% & 0,14\% & \texttt{prop\_fatur\_shopping} \\
+\texttt{prop\_visitas\_rua} & \texttt{prop\_fatur\_shopping} & $-0,9991$ & 0,09\% & 0,14\% & \texttt{prop\_visitas\_rua} \\
+\texttt{prop\_visitas\_shopping} & \texttt{prop\_fatur\_shopping} & $+0,9991$ & 0,13\% & 0,14\% & \texttt{prop\_visitas\_shopping} \\
+\texttt{prop\_visitas\_rua} & \texttt{prop\_fatur\_rua} & $+0,9991$ & 0,09\% & 0,15\% & \texttt{prop\_visitas\_rua} \\
+\texttt{prop\_visitas\_shopping} & \texttt{prop\_fatur\_rua} & $-0,9991$ & 0,13\% & 0,15\% & \texttt{prop\_visitas\_shopping} \\
+\texttt{idade\_base} & \texttt{idade\_base\_mes} & $+0,9897$ & 3,36\% & 3,60\% & \texttt{idade\_base} \\
+\texttt{fatur\_shopping} & \texttt{fatur\_bacalhau} & $+0,9308$ & 0,76\% & 0,14\% & \texttt{fatur\_bacalhau} \\
+\texttt{faturamento} & \texttt{fatur\_shopping} & $+0,9147$ & 2,84\% & 0,76\% & \texttt{fatur\_shopping} \\
+\texttt{faturamento} & \texttt{fatur\_bacalhau} & $+0,8981$ & 2,84\% & 0,14\% & \texttt{fatur\_bacalhau} \\
+\texttt{qtde\_visitas} & \texttt{qtde\_produto} & $+0,8663$ & 22,02\% & 11,33\% & \texttt{qtde\_produto} \\
+\texttt{qtde\_visitas} & \texttt{qtd\_mes\_ativacao} & $+0,8495$ & 22,02\% & 19,33\% & \texttt{qtd\_mes\_ativacao}* \\
+\texttt{qtde\_produto\_dst} & \texttt{qtde\_categorias\_dst} & $+0,8485$ & 5,78\% & 4,85\% & \texttt{qtde\_categorias\_dst} \\
+\texttt{qtde\_produto} & \texttt{qtde\_produto\_dst} & $+0,8272$ & 11,33\% & 5,78\% & \texttt{qtde\_produto\_dst} \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores. *Variável de alta importância em árvores; remoção recomendada apenas em modelos lineares.}
+\end{table}
+
+As correlações observadas concentram-se em três grupos de redundância:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Proporções entre canais ($|r| \ge 0,9991$):} Como há apenas dois tipos de filial (Rua e Shopping), as participações de visitas e faturamento entre os dois formatos são complementares (somam 100\%). Por isso, três das quatro proporções podem ser descartadas sem perda de informação, mantendo-se apenas \texttt{prop\_fatur\_rua}.
+    \item \textbf{Tempo de relacionamento ($r = +0,9897$):} \texttt{idade\_base\_mes} é derivada diretamente de \texttt{idade\_base} dividida por 30, bastando manter uma delas.
+    \item \textbf{Faturamento e volume de compras ($r$ entre $0,82$ e $0,93$):} O gasto em lojas de Shopping e na categoria Bacalhau acompanha de perto o faturamento total, assim como a quantidade de itens e categorias acompanha o total de visitas, permitindo simplificar o conjunto de variáveis em versões futuras do modelo.
+\end{itemize}
+
+\subsection{Predição para a Safra de Janeiro de 2025}\label{subsec:predicao_producao}
+
+Por fim, o modelo \textit{Random Forest} foi aplicado aos \textbf{73.101 clientes ativos} no segundo semestre de 2024 (safra \texttt{2025-01-01}) para estimar o risco de evasão no primeiro trimestre de 2025.
+
+Considerando o ponto de corte padrão ($p \ge 0,50$), o modelo prevê que \textbf{48.908 clientes (66,90\%)} deixariam de comprar no trimestre seguinte na ausência de ações de retenção, com probabilidade média de \textit{churn} de \textbf{56,76\%}. Para direcionar ações comerciais, os clientes foram divididos em três faixas de risco, detalhadas na Tabela~\ref{tab:faixas_risco_2025}.
+
+\begin{table}[H]
+\centering
+\caption{Distribuição dos clientes ativos em \texttt{01/01/2025} por faixa de risco de \textit{churn}}
+\label{tab:faixas_risco_2025}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Faixa de Risco} & \textbf{Clientes} & \textbf{\% Base} & \textbf{Prob. Média} & \textbf{Faturamento 6m (R\$)} & \textbf{Recência Média} \\
+\midrule
+1. Baixo Risco ($< 40\%$)       & 16.041 & 21,94\% & 22,76\% & R\$~2.291.989,76 & 32,0 dias \\
+2. Médio Risco ($40\%$--$70\%$) & 30.153 & 41,25\% & 56,19\% & R\$~1.454.494,36 & 75,8 dias \\
+3. Alto Risco ($\ge 70\%$)      & 26.907 & 36,81\% & 77,66\% & R\$~925.773,13   & 92,7 dias \\
+\midrule
+\textbf{Total / Geral}          & \textbf{73.101} & \textbf{100,00\%} & \textbf{56,76\%} & \textbf{R\$~4.672.257,25} & \textbf{72,5 dias} \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores.}
+\end{table}
+
+A divisão por faixas mostra perfis distintos de consumo e prioridade de atuação:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Baixo Risco (21,94\% da base):} Reúne 16.041 clientes frequentes, com tempo médio desde a última compra de 32 dias e que concentram quase metade da receita do semestre (\textbf{R\$~2,29 milhões}). Por já apresentarem alta fidelização, dispensam campanhas agressivas de desconto.
+    \item \textbf{Médio Risco (41,25\% da base):} Grupo intermediário (probabilidade média de 56,19\% e recência média de 75,8 dias), responsável por \textbf{R\$~1,45 milhão} no semestre. Representa o público mais indicado para ações preventivas de incentivo à recompra.
+    \item \textbf{Alto Risco (36,81\% da base):} Composto por 26.907 clientes com probabilidade média de evasão de 77,66\% e recência média de 92,7 dias, somando \textbf{R\$~925,77 mil} em faturamento sob risco.
+\end{itemize}
+
+O cruzamento entre a faixa de alto risco ($\ge 70\%$) e o faturamento acumulado no semestre permite priorizar clientes de maior gasto individual para ações diretas de recuperação, como ilustrado na Tabela~\ref{tab:top_vips_risco} com os dez clientes de maior faturamento nesse grupo. Nota-se que todos realizaram apenas uma compra de valor elevado no semestre, perfil de compra única que o modelo identifica como de alta propensão à evasão.
+
+\begin{table}[H]
+\centering
+\caption{Os 10 clientes de maior faturamento semestral classificados em alto risco de \textit{churn} em \texttt{01/01/2025}}
+\label{tab:top_vips_risco}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Cliente (\texttt{CLI\_CPF})} & \textbf{Prob. \textit{Churn}} & \textbf{Faturamento 6m (R\$)} & \textbf{Visitas 6m} & \textbf{Ticket Médio (R\$)} & \textbf{Recência (Dias)} \\
+\midrule
+\texttt{45b38f904157} & 79,96\% & 1.201,60 & 1 & 1.201,60 & 11 \\
+\texttt{10132655ccfa} & 78,57\% & 1.081,29 & 1 & 1.081,29 & 16 \\
+\texttt{56df144b2e93} & 76,05\% &   931,85 & 1 &   931,85 & 24 \\
+\texttt{d3ca26b61b5b} & 79,20\% &   913,53 & 1 &   913,53 & 13 \\
+\texttt{723abe558371} & 85,14\% &   880,72 & 1 &   880,72 & 51 \\
+\texttt{91531c44c498} & 80,46\% &   814,98 & 1 &   814,98 & 76 \\
+\texttt{bba3a36b6a36} & 84,19\% &   784,28 & 1 &   784,28 & 39 \\
+\texttt{1d26cf9ff26b} & 76,89\% &   779,59 & 1 &   779,59 & 34 \\
+\texttt{d60700adf30a} & 79,82\% &   735,92 & 1 &   735,92 & 15 \\
+\texttt{26fe8365dea9} & 81,26\% &   717,84 & 1 &   717,84 & 28 \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores.}
+\end{table}
