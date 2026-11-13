@@ -1,7 +1,85 @@
 \section{ESTRATÉGIAS DE GESTÃO DOS DADOS}\label{sec:conteudo1}
-\blindtext
-\subsection{Titulo da Subsecao}\label{subsec:conteudo1}
 
-\noindent\textbf{\textit{Titulo da subsubsecao 1}}
+\begin{sloppypar}
+O plano de gestão dos dados segue a estrutura padrão do \textbf{DMPTool} (\textit{Data Management Plan}), cobrindo tipos e formatos, metadados e qualidade, ética e privacidade, acesso e preservação no desenvolvimento do modelo de \textit{churn}.
 
+\subsection{Tipos de Dados, Formatos e Volume}\label{subsec:tipos_formatos}
+
+A base utilizada corresponde ao histórico de vendas da rede \textbf{VAI Store}, cedida pela \textbf{Visagio (VLabs)} para uso acadêmico em dois arquivos tabulares (\texttt{CSV}):
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Histórico de vendas (\texttt{vendas.csv}, 68~MB):} Transações de \texttt{02/01/2024} a \texttt{31/12/2024}, totalizando \textbf{556.198 registros}, \textbf{59 SKUs}, \textbf{102.943 clientes únicos} (código anonimizado) e duas unidades: rua (\texttt{FILIAL = RUA}, código \texttt{101032}) e \textit{shopping} (\texttt{FILIAL = SHOPPING}, código \texttt{101042}).
+    \item \textbf{Catálogo de produtos (\texttt{produto.csv}, 595~KB):} Cadastro de \textbf{6.500 itens}, mapeando \texttt{SKU} para \texttt{NOME\_PRODUTO}, \texttt{CATEGORIA} e \texttt{SUBCATEGORIA}.
+\end{itemize}
+
+A partir dos dados brutos, o projeto gera artefatos derivados em SQLite (\texttt{banco\_de\_dados.db}, tabelas \texttt{tb\_book} e \texttt{tb\_abt\_churn}), modelo serializado (\texttt{best\_model.pkl}), matrizes de avaliação (\texttt{comparativo\_modelos.csv}, \texttt{feature\_importances.csv}, \texttt{correlacoes\_altas.csv}) e predições (\texttt{predicoes\_2025\_01\_01.csv}).
+
+\subsection{Metadados, Padrões e Qualidade dos Dados}\label{subsec:metadados_qualidade}
+
+Para assegurar a qualidade da ingestão à Tabela Analítica de Modelagem (ABT), aplicaram-se quatro controles:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Completude e integridade referencial:} \texttt{vendas.csv} não possui valores nulos (556.198 linhas e 10 colunas). Em \texttt{produto.csv}, embora 2.001 cadastros inativos não tenham categoria/subcategoria e 1 esteja sem \texttt{SKU}, o \textit{left join} com as vendas comprovou cadastro completo para todos os 59 SKUs ativos em 2024.
+    \item \textbf{Padronização de tipos e limpeza sintática:} Em \texttt{produto.csv}, removeram-se espaços à direita nos códigos e descrições para permitir o pareamento exato por \texttt{SKU}. As datas (\texttt{DATA\_ATEND}) foram validadas em formato (\texttt{YYYY-MM-DD}) e convertidas para tipo temporal.
+    \item \textbf{Idempotência na geração de safras:} Em \texttt{exec\_safra.py}, a carga de \texttt{tb\_book} remove registros prévios da mesma data de referência (\texttt{DELETE FROM tb\_book WHERE dt\_ref = ...}) antes da inserção, evitando duplicidades em reprocessamentos.
+    \item \textbf{Isolamento temporal contra vazamento de dados (\textit{data leakage}):} As consultas \texttt{features.sql} e \texttt{abt.sql} separam estritamente a janela de observação ($\big[\text{date}(\texttt{dt\_ref}, \text{`-6 months'}), \texttt{dt\_ref}\big)$) da janela de maturação do alvo ($\big[\texttt{dt\_ref}, \text{date}(\texttt{dt\_ref}, \text{`+3 months'})\big)$), impedindo que informações futuras contaminem os preditores.
+\end{enumerate}
+\iffalse
+
+Os atributos das bases brutas estão documentados na Tabela~\ref{tab:dicionario_classificacao_dmp}. Os dados derivados são documentados diretamente nos scripts SQL e Python do projeto, abrangendo as 32 variáveis numéricas de \texttt{tb\_book} (Seção~\ref{sec:conteudo3}, Tabela~\ref{tab:book_features}) e o alvo binário \texttt{flag\_churn} de \texttt{tb\_abt\_churn}.
+
+\begin{table}[H]
+\centering
+\caption{Dicionário de dados e classificação estatística dos atributos originais}
+\label{tab:dicionario_classificacao_dmp}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllll}
+\toprule
+\textbf{Origem} & \textbf{Atributo} & \textbf{Tipo Físico} & \textbf{Classificação / Papel} & \textbf{Descrição e Domínio} \\
+\midrule
+\texttt{vendas.csv}  & \texttt{COD\_ATEND}   & Texto (\textit{string})   & Categórico Nominal (ID) & Identificador do atendimento (cupom); agrupa itens da compra. \\
+\texttt{vendas.csv}  & \texttt{COD\_VENDA}   & Texto (\textit{string})   & Categórico Nominal (PK) & Identificador único do item faturado dentro do atendimento. \\
+\texttt{vendas.csv}  & \texttt{COD\_FILIAL}  & Inteiro (\textit{int})    & Categórico Nominal (ID) & Código numérico da unidade varejista (\texttt{101032} ou \texttt{101042}). \\
+\texttt{vendas.csv}  & \texttt{FILIAL}       & Texto (\textit{string})   & Categórico Nominal      & Formato físico da unidade varejista (\texttt{RUA} ou \texttt{SHOPPING}). \\
+\texttt{vendas.csv}  & \texttt{DATA\_ATEND}  & Data (\texttt{YYYY-MM-DD})& Temporal (Discreto)     & Data de realização do atendimento (\texttt{2024-01-02} a \texttt{2024-12-31}). \\
+\texttt{vendas.csv}  & \texttt{SKU}          & Inteiro (\textit{int})    & Categórico Nominal (FK) & Código identificador único do produto vendido (59 SKUs ativos). \\
+\texttt{vendas.csv}  & \texttt{UNID}         & Texto (\textit{string})   & Categórico Nominal      & Unidade de comercialização do item (ex.: \texttt{KG}, \texttt{UN}). \\
+\texttt{vendas.csv}  & \texttt{QTD\_VENDA}   & Ponto Flutuante           & Quantitativo Contínuo   & Quantidade vendida do item (admite frações para venda a granel). \\
+\texttt{vendas.csv}  & \texttt{FATUR\_VENDA} & Ponto Flutuante           & Quantitativo Contínuo   & Receita bruta gerada pelo item na transação, em reais (R\$). \\
+\texttt{vendas.csv}  & \texttt{CLI\_CPF}     & Texto (\textit{string})   & Categórico Nominal (ID) & Código hexadecimal anonimizado (12 caracteres) do cliente. \\
+\midrule
+\texttt{produto.csv} & \texttt{SKU}          & Inteiro / Texto           & Categórico Nominal (PK) & Chave primária do catálogo de mercadorias (6.500 registros). \\
+\texttt{produto.csv} & \texttt{NOME\_PRODUTO}& Texto (\textit{string})   & Textual Descritivo      & Denominação comercial completa do produto cadastrado. \\
+\texttt{produto.csv} & \texttt{CATEGORIA}    & Texto (\textit{string})   & Categórico Nominal      & Macrocategoria mercadológica do item (13 categorias ativas). \\
+\texttt{produto.csv} & \texttt{SUBCATEGORIA} & Texto (\textit{string})   & Categórico Nominal      & Subdivisão mercadológica específica vinculada à categoria. \\
+\bottomrule
+\end{tabular}%
+}
+\source{Elaborado pelos autores.}
+\end{table}
+\fi
+
+\subsection{Ética, Privacidade e Propriedade Intelectual}\label{subsec:etica_privacidade}
+
+A base é ativo proprietário da \textbf{VAI Store}, cedido pela \textbf{Visagio (VLabs)} exclusivamente para fins acadêmicos. Em conformidade com a LGPD (Lei nº 13.709/2018), o projeto adota duas salvaguardas:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Pseudonimização na origem:} Não há dados pessoais diretos; \texttt{CLI\_CPF} é um \textit{hash} irreversível de 12 caracteres hexadecimais (ex.: \texttt{ec0abf3f4220}), sem chave de reidentificação.
+    \item \textbf{Uso restrito na modelagem:} \texttt{CLI\_CPF} atua apenas como chave relacional e é removido antes do treino, publicando-se somente métricas e estatísticas agregadas.
+\end{enumerate}
+
+\subsection{Acesso, Compartilhamento e Reuso}\label{subsec:acesso_compartilhamento}
+
+Por restrição contratual, o conjunto não possui \textit{Digital Object Identifier} (DOI) nem pode ser redistribuído. Os dados brutos (\texttt{files/data/}) e o banco local (\texttt{banco\_de\_dados.db}) são bloqueados no controle de versão via \texttt{.gitignore}, restringindo o compartilhamento público ao código-fonte, à documentação e aos resultados agregados.
+
+\subsection{Armazenamento, Preservação e Reprodutibilidade}\label{subsec:armazenamento_preservacao}
+
+Os arquivos originais (\texttt{vendas.csv} e \texttt{produto.csv}) permanecem imutáveis em \texttt{files/data/} como fonte única da verdade. Todos os artefatos derivados são reconstruídos de forma determinística executando o \textit{pipeline} em sequência:
+\begin{enumerate}[label=\arabic*.]
+    \item \texttt{queries/exec\_safra.py}: executa \texttt{features.sql} e popula \texttt{tb\_book} para as safras mensais;
+    \item \texttt{data\_prep/train/exec\_abt.py}: executa \texttt{abt.sql} e gera \texttt{tb\_abt\_churn};
+    \item \texttt{modelling/train/model.py}: treina os modelos (\texttt{random\_state = 2026}), exporta os comparativos e salva o melhor modelo;
+    \item \texttt{modelling/predict/predict.py}: escora a safra de produção (\texttt{2025-01-01}).
+\end{enumerate}
+
+As dependências de execução (\texttt{pandas}, \texttt{numpy}, \texttt{sqlalchemy}, \texttt{scikit-learn}, \texttt{joblib}) estão especificadas em \texttt{files/requirements.txt}.
+\end{sloppypar}
 
