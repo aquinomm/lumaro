@@ -1,3 +1,10 @@
-\textit{\textbf{Resumo: }até 250 palavras}
+\textbf{Resumo: }Este trabalho desenvolve um modelo preditivo de evasão de clientes (\textit{churn}) para uma rede varejista, utilizando o histórico transacional de 2024 (556.198 registros de vendas e 102.943 clientes únicos) e o catálogo de 6.500 produtos. 
+Na análise exploratória, os dados foram consolidados no nível de visita diária por cliente. 
+Constatou-se que 83,88\% das recompras ocorrem em até 90 dias, critério adotado para definir a variável resposta de evasão, além de confirmar o impacto da compra única (\textit{one-timers}), do canal de atendimento (Rua, Shopping e multicanal) e da categoria de produto na retenção. 
+Na etapa de modelagem, estruturou-se uma Tabela Analítica de Modelagem (ABT) em safras mensais, combinando uma janela de observação de seis meses para o cálculo de 32 variáveis explicativas e uma janela futura de três meses para marcação do \textit{churn}. 
+Foram avaliados sete algoritmos de classificação supervisionada com validação temporal (\textit{Out-Of-Time}). 
+Os comitês de árvores (\textit{Random Forest} e \textit{Gradient Boosting}) obtiveram o melhor desempenho na base \textit{Out-Of-Time} (ROC AUC de 0,7620 e acurácia de 72,1\%), tendo a frequência de visitas e a regularidade mensal como principais preditores. 
+Por fim, o modelo \textit{Random Forest} foi aplicado aos 73.101 clientes ativos ao final de 2024 para estimar o risco de evasão no primeiro trimestre de 2025, segmentando a base em faixas de risco para direcionar ações preventivas de retenção.
 
-\textit{Palavras-chave: 3 palavras}
+\vspace{0.5cm}
+\noindent\textit{Palavras-chave: }Previsão de \textit{churn}; Varejo; Aprendizado de máquina.

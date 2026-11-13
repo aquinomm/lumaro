@@ -2,18 +2,32 @@
 
 Esta seção apresenta a estruturação dos dados para a predição de evasão de clientes (\textit{churn}), abrangendo a construção das variáveis explicativas, a definição das janelas temporais de observação e maturação, a divisão das bases de validação e a configuração dos modelos avaliados.
 
-\subsection{Estruturação das Bases e Construção de Safras}\label{subsec:arquitetura_sql}
+\subsection{Estruturação das Tabelas e Construção de Safras}\label{subsec:arquitetura_sql}
+
+Esta seção demonstra como foram organizadas as tabelas de variáveis dentro do banco de dados SQLite utilizado.
 
 \subsubsection{Organização dos Dados}
 Para organizar o processamento e separar os dados brutos da etapa de modelagem, os registros históricos de vendas e o catálogo de produtos foram consolidados em um banco de dados relacional. A estrutura foi dividida em três camadas:
 \begin{enumerate}[leftmargin=*]
-    \item \textbf{Base Transacional:} Contém o histórico original de vendas na granularidade de item comercializado por atendimento, cruzado com as informações cadastrais de categoria dos produtos.
-    \item \textbf{Base de Atributos (\textit{Book of Features}):} Reúne os indicadores comportamentais agregados por cliente para cada data de referência mensal (\texttt{dt\_ref}), sem incluir a variável resposta.
+    \item \textbf{Base de Vendas:} Contém o histórico original de vendas na granularidade de item comercializado por atendimento.
+    \item \textbf{Base de Produtos:} Contém as categorias e subcategorias dos produtos, a serem cruzadas via identificador único (SKU).
+    \item \textbf{Base de Atributos :} Reúne os indicadores comportamentais agregados por cliente para cada data de referência mensal (\texttt{dt\_ref}), sem incluir a variável resposta.
     \item \textbf{Tabela Analítica de Modelagem (ABT):} Resulta do cruzamento entre a base de atributos e o histórico de compras nos meses subsequentes à data de referência, atribuindo a cada cliente o rótulo de evasão (\texttt{flag\_churn}).
 \end{enumerate}
 
+O diagrama do banco de dados pode ser visto na figura \ref{fig:conteudo2diagramadbfinal} a seguir.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{imagens/diagrama_db_2.png}
+    \caption{Diagrama do banco de dados final}
+    \label{fig:conteudo2diagramadbfinal}
+\end{figure}
+
+
 \subsubsection{Engenharia de Atributos e Janela de Observação}
-A construção das variáveis explicativas baseia-se em fotografias mensais (\textit{snapshots}), definidas sempre no primeiro dia de cada mês (\texttt{dt\_ref}). Para cada data de referência, são consideradas as transações realizadas pelo cliente nos \textbf{6 meses imediatamente anteriores}:
+A construção das variáveis explicativas baseia-se em fotografias mensais (\textit{snapshots}), definidas sempre no primeiro dia de cada mês (\texttt{dt\_ref}). 
+Para cada data de referência, são consideradas as transações realizadas pelo cliente nos últimos 6 meses (janela de observação):
 \begin{equation}
     \texttt{DATA\_ATEND} \in \big[\text{date}(\texttt{dt\_ref}, \text{`-6 months'}), \; \texttt{dt\_ref}\big)
 \end{equation}
@@ -47,7 +61,7 @@ Mix de Categorias & \raggedright\texttt{qtde\_categorias\_dst}, \texttt{fatur\_[
 \subsubsection{Definição da Variável Resposta e Recorte das Safras}
 A separação entre o cálculo de atributos e a marcação da variável resposta evita vazamento de dados temporais e reflete a operação real do modelo, na qual o comportamento futuro ainda não é conhecido no momento da predição.
 
-Para compor a tabela de treinamento (ABT), cada cliente ativo em uma data de referência \texttt{dt\_ref} é acompanhado ao longo de uma \textbf{janela de maturação de 3 meses no futuro}:
+Para compor a tabela de treinamento (ABT), cada cliente ativo em uma data de referência \texttt{dt\_ref} é acompanhado ao longo de uma janela de maturação de 3 meses no futuro:
 \begin{equation}
     \texttt{DATA\_ATEND} \in \big[\texttt{dt\_ref}, \; \text{date}(\texttt{dt\_ref}, \text{`+3 months'})\big)
 \end{equation}
@@ -92,6 +106,8 @@ A Tabela~\ref{tab:resumo_safras} resume os períodos, a quantidade de clientes e
 
 \subsection{Estratégia de Validação e Algoritmos Avaliados}\label{subsec:validacao_algoritmos}
 
+Esta subseção aborda a estratégia de separação treino-teste utilizada e algoritimos treinados.
+
 \subsubsection{Divisão entre Treino, Teste e Validação Temporal (\textit{Out-Of-Time})}
 As quatro safras maturadas totalizam 271.783 registros e foram divididas respeitando a ordem cronológica dos dados:
 \begin{enumerate}[leftmargin=*]
@@ -102,6 +118,9 @@ As quatro safras maturadas totalizam 271.783 registros e foram divididas respeit
 Os campos de identificação e datas (\texttt{dt\_ref}, \texttt{CLI\_CPF} e \texttt{prim\_compra}) foram excluídos das variáveis preditoras para que o aprendizado dependa apenas do comportamento relativo de compra, sem vincular as regras a datas específicas do calendário.
 
 \subsubsection{Modelos Testados}
+
+A criação de uma ABT separada por safras facilitou o treino de diferentes modelos.
+
 Foram comparados sete algoritmos de classificação supervisionada para dados tabulares:
 
 \begin{itemize}[leftmargin=*]

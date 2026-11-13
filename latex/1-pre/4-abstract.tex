@@ -1,3 +1,9 @@
-\textit{\textbf{Abstract: }maximum of 250 words}
+\textbf{Abstract: }This work develops a customer churn prediction model for a retail chain, using 2024 transactional history (556,198 sales records and 102,943 unique customers) and a catalog of 6,500 products. 
+In the exploratory data analysis, records were consolidated at the daily customer visit level. 
+It was found that 83.88\% of repeat purchases occur within 90 days, a threshold adopted to define the churn target variable, while also confirming the impact of one-time buyers, store format (Street, Mall, and multichannel), and product category on retention. 
+In the modeling stage, an Analytical Base Table (ABT) was structured in monthly cohorts, combining a six-month observation window to compute 32 explanatory variables and a three-month future window to label churn. 
+Seven supervised classification algorithms were evaluated using Out-Of-Time (OOT) validation. Tree ensembles (Random Forest and Gradient Boosting) achieved the best performance on the OOT set (0.7620 ROC AUC and 72.1\% accuracy), with visit frequency and monthly regularity acting as the top predictors. 
+Finally, the Random Forest model was applied to the 73,101 active customers at the end of 2024 to estimate churn risk for the first quarter of 2025, segmenting the customer base into risk tiers to guide preventive retention actions.
 
-\textit{Key-words: 3 words}
+\vspace{0.5cm}
+\noindent\textit{Key-words: }Churn prediction; Retail; Machine learning.
